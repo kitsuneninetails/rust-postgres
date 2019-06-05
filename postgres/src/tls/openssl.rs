@@ -23,7 +23,6 @@ impl TlsStream for SslStream<Stream> {
 /// Requires the `with-openssl` feature.
 pub struct OpenSsl {
     connector: SslConnector,
-    disable_verification: bool,
 }
 
 impl fmt::Debug for OpenSsl {
@@ -35,7 +34,8 @@ impl fmt::Debug for OpenSsl {
 impl OpenSsl {
     /// Creates a `OpenSsl` with `SslConnector`'s default configuration.
     pub fn new() -> Result<OpenSsl, ErrorStack> {
-        let connector = SslConnectorBuilder::new(SslMethod::tls())?.build();
+        let builder = SslConnector::builder(SslMethod::tls())?;
+        let connector = builder.build();
         Ok(OpenSsl::from(connector))
     }
 
@@ -48,23 +48,12 @@ impl OpenSsl {
     pub fn connector_mut(&mut self) -> &mut SslConnector {
         &mut self.connector
     }
-
-    /// If set, the
-    /// `SslConnector::danger_connect_without_providing_domain_for_certificate_verification_and_server_name_indication`
-    /// method will be used to connect.
-    ///
-    /// If certificate verification has been disabled in the `SslConnector`, verification must be
-    /// additionally disabled here for that setting to take effect.
-    pub fn danger_disable_hostname_verification(&mut self, disable_verification: bool) {
-        self.disable_verification = disable_verification;
-    }
 }
 
 impl From<SslConnector> for OpenSsl {
     fn from(connector: SslConnector) -> OpenSsl {
         OpenSsl {
-            connector: connector,
-            disable_verification: false,
+            connector,
         }
     }
 }
@@ -75,11 +64,7 @@ impl TlsHandshake for OpenSsl {
         domain: &str,
         stream: Stream,
     ) -> Result<Box<TlsStream>, Box<Error + Send + Sync>> {
-        let stream = if self.disable_verification {
-            self.connector.danger_connect_without_providing_domain_for_certificate_verification_and_server_name_indication(stream)?
-        } else {
-            self.connector.connect(domain, stream)?
-        };
+        let stream = self.connector.connect(domain, stream)?;
         Ok(Box::new(stream))
     }
 }

@@ -27,7 +27,8 @@ pub struct OpenSsl(SslConnector);
 impl OpenSsl {
     /// Creates a new `OpenSsl` with default settings.
     pub fn new() -> Result<OpenSsl, ErrorStack> {
-        let connector = SslConnectorBuilder::new(SslMethod::tls())?.build();
+        let builder = SslConnector::builder(SslMethod::tls())?;
+        let connector = builder.build();
         Ok(OpenSsl(connector))
     }
 }
